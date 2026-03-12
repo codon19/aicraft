@@ -1,0 +1,33 @@
+{
+  "name": "@wisediag/mcp-swagger",
+  "version": "0.1.0",
+  "description": "MCP Server for searching Swagger/OpenAPI documentation (Knife4j compatible)",
+  "type": "module",
+  "bin": {
+    "mcp-swagger": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "clean": "rm -rf dist"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "swagger",
+    "openapi",
+    "knife4j",
+    "ai-tools"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

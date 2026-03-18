@@ -1,5 +1,5 @@
 {
-  "name": "@wisediag/mcp-swagger",
+  "name": "@codon/mcp-swagger",
   "version": "0.1.0",
   "description": "MCP Server for searching Swagger/OpenAPI documentation (Knife4j compatible)",
   "type": "module",

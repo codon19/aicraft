@@ -64,6 +64,7 @@ let loadError = "";
 
 let embeddingIndex: number[][] = [];
 let embeddingReady = false;
+let rawSpecs: any[] = [];
 
 function buildDocUrl(ep: ApiEndpoint): string {
   const tag = encodeURIComponent(ep.tags[0] || "default");
@@ -300,6 +301,7 @@ async function loadSpec(): Promise<void> {
         const res = await fetch(fullUrl);
         if (!res.ok) continue;
         const spec = await res.json();
+        rawSpecs.push(spec);
         const parsed = parseEndpoints(spec);
         endpoints.push(...parsed);
       } catch {
@@ -322,6 +324,282 @@ async function loadSpec(): Promise<void> {
     loadError = e.message;
     process.stderr.write(`Failed to load spec: ${e.message}\n`);
   }
+}
+
+// ─── TypeScript Type Generator ──────────────────────────────────
+
+function findRawOperation(
+  path: string,
+  method: string,
+): { operation: any; spec: any } | null {
+  for (const spec of rawSpecs) {
+    const op = spec.paths?.[path]?.[method.toLowerCase()];
+    if (op) return { operation: op, spec };
+  }
+  return null;
+}
+
+function toPascalCase(str: string): string {
+  const result = str
+    .replace(/[«»<>]/g, "_")
+    .replace(/[^a-zA-Z0-9_]/g, " ")
+    .split(/[\s_]+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join("");
+  return /^[0-9]/.test(result) ? `_${result}` : result;
+}
+
+function operationToTypeName(ep: ApiEndpoint): string {
+  if (ep.operationId) return toPascalCase(ep.operationId);
+  const parts = ep.path
+    .split("/")
+    .filter(Boolean)
+    .map((s) => s.replace(/[{}]/g, ""));
+  return toPascalCase(`${ep.method.toLowerCase()}_${parts.join("_")}`);
+}
+
+function schemaToTs(
+  schema: any,
+  spec: any,
+  namedTypes: Map<string, string>,
+  indent: string,
+  depth: number,
+): string {
+  if (!schema || depth > 8) return "unknown";
+
+  if (schema.$ref) {
+    const refName = schema.$ref.split("/").pop()!;
+    const tsName = toPascalCase(refName);
+    if (!namedTypes.has(tsName)) {
+      namedTypes.set(tsName, "");
+      const resolved = resolveRef(schema.$ref, spec);
+      if (resolved) {
+        namedTypes.set(
+          tsName,
+          buildInterfaceBody(resolved, spec, namedTypes, 0),
+        );
+      }
+    }
+    return tsName;
+  }
+
+  if (schema.allOf) {
+    const parts = schema.allOf
+      .map((s: any) => schemaToTs(s, spec, namedTypes, indent, depth + 1))
+      .filter((p: string) => p !== "unknown");
+    return parts.length > 0 ? parts.join(" & ") : "unknown";
+  }
+
+  if (schema.oneOf || schema.anyOf) {
+    return (schema.oneOf || schema.anyOf)
+      .map((s: any) => schemaToTs(s, spec, namedTypes, indent, depth + 1))
+      .join(" | ");
+  }
+
+  if (schema.enum) {
+    return schema.enum
+      .map((v: any) => (typeof v === "string" ? `'${v}'` : String(v)))
+      .join(" | ");
+  }
+
+  if (schema.type === "array") {
+    if (!schema.items) return "unknown[]";
+    const itemType = schemaToTs(
+      schema.items,
+      spec,
+      namedTypes,
+      indent,
+      depth + 1,
+    );
+    return itemType.includes("|") || itemType.includes("&")
+      ? `(${itemType})[]`
+      : `${itemType}[]`;
+  }
+
+  if (schema.type === "object" || schema.properties) {
+    if (!schema.properties) {
+      if (
+        schema.additionalProperties &&
+        typeof schema.additionalProperties === "object"
+      ) {
+        const vt = schemaToTs(
+          schema.additionalProperties,
+          spec,
+          namedTypes,
+          indent + "  ",
+          depth + 1,
+        );
+        return `Record<string, ${vt}>`;
+      }
+      return "Record<string, unknown>";
+    }
+    const lines: string[] = [];
+    const req = new Set<string>(schema.required || []);
+    for (const [key, val] of Object.entries(schema.properties) as [
+      string,
+      any,
+    ][]) {
+      const ps = val.$ref ? resolveRef(val.$ref, spec) || val : val;
+      if (ps.description) lines.push(`${indent}/** ${ps.description} */`);
+      const opt = req.has(key) ? "" : "?";
+      const t = schemaToTs(val, spec, namedTypes, indent + "  ", depth + 1);
+      lines.push(`${indent}${key}${opt}: ${t}`);
+    }
+    const closing = indent.length >= 2 ? indent.slice(2) : "";
+    return `{\n${lines.join("\n")}\n${closing}}`;
+  }
+
+  switch (schema.type) {
+    case "string":
+      return "string";
+    case "integer":
+    case "number":
+      return "number";
+    case "boolean":
+      return "boolean";
+    case "file":
+      return "File";
+    default:
+      return "unknown";
+  }
+}
+
+function buildInterfaceBody(
+  schema: any,
+  spec: any,
+  namedTypes: Map<string, string>,
+  depth: number,
+): string {
+  if (!schema || depth > 8) return "";
+  if (schema.$ref) schema = resolveRef(schema.$ref, spec);
+  if (!schema?.properties) return "";
+
+  const lines: string[] = [];
+  const req = new Set<string>(schema.required || []);
+  for (const [key, val] of Object.entries(schema.properties) as [
+    string,
+    any,
+  ][]) {
+    const ps = val.$ref ? resolveRef(val.$ref, spec) || val : val;
+    if (ps.description) lines.push(`  /** ${ps.description} */`);
+    const opt = req.has(key) ? "" : "?";
+    const t = schemaToTs(val, spec, namedTypes, "    ", depth + 1);
+    lines.push(`  ${key}${opt}: ${t}`);
+  }
+  return lines.join("\n");
+}
+
+function generateTsForEndpoint(
+  ep: ApiEndpoint,
+  namedTypes: Map<string, string>,
+): string {
+  const raw = findRawOperation(ep.path, ep.method);
+  if (!raw) return `// Could not find raw spec for ${ep.method} ${ep.path}`;
+  const { operation, spec } = raw;
+  const sections: string[] = [];
+  const baseName = operationToTypeName(ep);
+
+  const resps = operation.responses || {};
+  const okResp: any =
+    resps["200"] || resps["201"] || Object.values(resps)[0];
+  if (okResp) {
+    const schema =
+      okResp.content?.["application/json"]?.schema || okResp.schema;
+    if (schema) {
+      const tsType = schemaToTs(schema, spec, namedTypes, "  ", 0);
+      const name = `${baseName}Response`;
+      sections.push(
+        tsType.startsWith("{")
+          ? `export interface ${name} ${tsType}`
+          : `export type ${name} = ${tsType}`,
+      );
+    }
+  }
+
+  let reqSchema: any = null;
+  if (operation.requestBody) {
+    reqSchema = operation.requestBody.content?.["application/json"]?.schema;
+  }
+  if (!reqSchema) {
+    const bp = (operation.parameters || []).find(
+      (p: any) => p.in === "body",
+    );
+    if (bp?.schema) reqSchema = bp.schema;
+  }
+  if (reqSchema) {
+    const tsType = schemaToTs(reqSchema, spec, namedTypes, "  ", 0);
+    const name = `${baseName}Request`;
+    sections.push(
+      tsType.startsWith("{")
+        ? `export interface ${name} ${tsType}`
+        : `export type ${name} = ${tsType}`,
+    );
+  }
+
+  const header = `// ${ep.method} ${ep.path}${ep.summary ? `  ${ep.summary}` : ""}`;
+  return [header, ...sections].join("\n");
+}
+
+function generateTsTypes(
+  path?: string,
+  method?: string,
+  tag?: string,
+): string {
+  if (loadError)
+    return JSON.stringify({ error: `Failed to load spec: ${loadError}` });
+  if (endpoints.length === 0)
+    return JSON.stringify({ error: "No endpoints loaded." });
+
+  let targets: ApiEndpoint[] = [];
+
+  if (path) {
+    targets = endpoints.filter((ep) => {
+      const pm = ep.path === path || ep.path.endsWith(path);
+      return method ? pm && ep.method === method.toUpperCase() : pm;
+    });
+    if (targets.length === 0) {
+      const fuzzy = endpoints.filter((ep) =>
+        ep.path.toLowerCase().includes(path.toLowerCase()),
+      );
+      return JSON.stringify({
+        error: "Path not found." + (fuzzy.length > 0 ? " Did you mean:" : ""),
+        ...(fuzzy.length > 0 && {
+          suggestions: fuzzy
+            .slice(0, 5)
+            .map((e) => `${e.method} ${e.path}`),
+        }),
+      });
+    }
+  } else if (tag) {
+    targets = endpoints.filter((ep) =>
+      ep.tags.some((t) => t.toLowerCase().includes(tag.toLowerCase())),
+    );
+    if (targets.length === 0)
+      return JSON.stringify({
+        error: `No endpoints found for tag: ${tag}`,
+      });
+  } else {
+    return JSON.stringify({
+      error: 'Provide "path" or "tag" to generate types.',
+    });
+  }
+
+  const namedTypes = new Map<string, string>();
+  const sections = targets.map((ep) =>
+    generateTsForEndpoint(ep, namedTypes),
+  );
+
+  const models: string[] = [];
+  for (const [name, body] of namedTypes) {
+    models.push(
+      body
+        ? `export interface ${name} {\n${body}\n}`
+        : `export type ${name} = Record<string, unknown>`,
+    );
+  }
+
+  return [...models, "", ...sections].filter(Boolean).join("\n\n");
 }
 
 // ─── Tool Definitions ───────────────────────────────────────────
@@ -408,6 +686,30 @@ const TOOLS = [
         },
       },
       required: ["path"],
+    },
+  },
+  {
+    name: "generate_ts_types",
+    description:
+      "Generate TypeScript interface/type definitions from API endpoint response and request body schemas. Resolves all $ref references recursively. Provide path (single endpoint) or tag (all endpoints in a group).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        path: {
+          type: "string",
+          description: 'API path to generate types for, e.g. "/api/v1/users"',
+        },
+        method: {
+          type: "string",
+          description:
+            "HTTP method filter (optional, defaults to all methods for the path)",
+        },
+        tag: {
+          type: "string",
+          description:
+            "Generate types for all endpoints under this tag/group name",
+        },
+      },
     },
   },
 ];
@@ -712,6 +1014,12 @@ async function handleToolCall(
       return openApiDoc(
         args.path as string,
         args.method as string | undefined,
+      );
+    case "generate_ts_types":
+      return generateTsTypes(
+        args.path as string | undefined,
+        args.method as string | undefined,
+        args.tag as string | undefined,
       );
     default:
       return JSON.stringify({ error: `Unknown tool: ${name}` });

@@ -8,6 +8,7 @@ export interface ApiEndpoint {
   parameters: ParameterInfo[];
   requestBody: string;
   responses: Record<string, string>;
+  groupName: string;
 }
 
 export interface ParameterInfo {

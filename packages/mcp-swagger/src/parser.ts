@@ -45,7 +45,7 @@ export function extractSchemaPreview(
   return schema.type || "unknown";
 }
 
-export function parseEndpoints(spec: any): ApiEndpoint[] {
+export function parseEndpoints(spec: any, groupName: string): ApiEndpoint[] {
   const result: ApiEndpoint[] = [];
   const paths = spec.paths || {};
 
@@ -112,6 +112,7 @@ export function parseEndpoints(spec: any): ApiEndpoint[] {
         parameters: params,
         requestBody,
         responses,
+        groupName,
       });
     }
   }
@@ -121,36 +122,39 @@ export function parseEndpoints(spec: any): ApiEndpoint[] {
 
 export async function loadSpec(): Promise<void> {
   try {
-    let specUrls: string[] = [];
+    let resourceEntries: { url: string; groupName: string }[] = [];
+
     try {
       const res = await fetch(`${BASE_URL}/swagger-resources`);
       if (res.ok) {
         const resources = (await res.json()) as SwaggerResource[];
-        specUrls = resources.map((r) => r.url || r.location);
-        if (resources.length > 0 && resources[0].name) {
-          state.groupName = resources[0].name;
-        }
+        resourceEntries = resources.map((r) => ({
+          url: r.url || r.location,
+          groupName: r.name || "default",
+        }));
       }
     } catch {
       // Not a Knife4j server, try common paths
     }
 
-    if (specUrls.length === 0) {
-      specUrls = [
-        "/v2/api-docs",
-        "/v3/api-docs",
-        "/v2/api-docs?group=default",
+    if (resourceEntries.length === 0) {
+      resourceEntries = [
+        { url: "/v2/api-docs", groupName: "default" },
+        { url: "/v3/api-docs", groupName: "default" },
+        { url: "/v2/api-docs?group=default", groupName: "default" },
       ];
     }
 
-    for (const url of specUrls) {
+    for (const entry of resourceEntries) {
       try {
-        const fullUrl = url.startsWith("http") ? url : `${BASE_URL}${url}`;
+        const fullUrl = entry.url.startsWith("http")
+          ? entry.url
+          : `${BASE_URL}${entry.url}`;
         const res = await fetch(fullUrl);
         if (!res.ok) continue;
         const spec = await res.json();
         state.rawSpecs.push(spec);
-        const parsed = parseEndpoints(spec);
+        const parsed = parseEndpoints(spec, entry.groupName);
         state.endpoints.push(...parsed);
       } catch {
         continue;

@@ -4,7 +4,6 @@ import { BASE_URL } from "./config.js";
 export const state = {
   endpoints: [] as ApiEndpoint[],
   tags: new Map<string, string[]>(),
-  groupName: "default",
   loadError: "",
   embeddingIndex: [] as number[][],
   embeddingReady: false,
@@ -12,7 +11,8 @@ export const state = {
 };
 
 export function buildDocUrl(ep: ApiEndpoint): string {
+  const group = encodeURIComponent(ep.groupName || "default");
   const tag = encodeURIComponent(ep.tags[0] || "default");
   const opId = encodeURIComponent(ep.operationId);
-  return `${BASE_URL}/doc.html#/${state.groupName}/${tag}/${opId}`;
+  return `${BASE_URL}/doc.html#/${group}/${tag}/${opId}`;
 }

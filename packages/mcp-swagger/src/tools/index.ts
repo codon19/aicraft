@@ -1,0 +1,157 @@
+import { searchApi } from "./search.js";
+import { getApiDetail } from "./detail.js";
+import { listTags, listTagApis } from "./tags.js";
+import { openApiDoc } from "./doc.js";
+import { generateTypes } from "../generator/index.js";
+
+export const TOOLS = [
+  {
+    name: "search_api",
+    description:
+      'Search backend API endpoints by keyword or semantic similarity. mode: "keyword" (exact), "semantic" (embedding), "auto" (keyword first, semantic fallback, default).',
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        keyword: {
+          type: "string",
+          description:
+            "Search query — keyword or natural language description",
+        },
+        mode: {
+          type: "string",
+          description: '"keyword" | "semantic" | "auto" (default)',
+        },
+        tag: { type: "string", description: "Filter by tag/group name" },
+        limit: {
+          type: "number",
+          description: "Max results (default: 10)",
+        },
+      },
+      required: ["keyword"],
+    },
+  },
+  {
+    name: "get_api_detail",
+    description:
+      "Get full details of a specific API endpoint including parameters, request body schema, and response schema.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        method: {
+          type: "string",
+          description: "HTTP method: GET, POST, PUT, DELETE, PATCH",
+        },
+        path: {
+          type: "string",
+          description: 'API path, e.g. "/api/v1/users"',
+        },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "list_api_tags",
+    description: "List all API tags/groups with endpoint counts.",
+    inputSchema: { type: "object" as const, properties: {} },
+  },
+  {
+    name: "list_tag_apis",
+    description: "List all API endpoints under a specific tag/group.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        tag: {
+          type: "string",
+          description: "Tag/group name to list endpoints for",
+        },
+      },
+      required: ["tag"],
+    },
+  },
+  {
+    name: "open_api_doc",
+    description:
+      "Open a specific API endpoint's documentation page in the default browser (Knife4j UI).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        method: {
+          type: "string",
+          description: "HTTP method: GET, POST, PUT, DELETE, PATCH",
+        },
+        path: {
+          type: "string",
+          description: 'API path, e.g. "/api/v1/users"',
+        },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "generate_types",
+    description:
+      'Generate typed code from API endpoint schemas. Supports TypeScript (interfaces) and Dart (classes with fromJson/toJson). Resolves all $ref references recursively. Provide path (single endpoint) or tag (all endpoints in a group).',
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        path: {
+          type: "string",
+          description:
+            'API path to generate types for, e.g. "/api/v1/users"',
+        },
+        method: {
+          type: "string",
+          description:
+            "HTTP method filter (optional, defaults to all methods for the path)",
+        },
+        tag: {
+          type: "string",
+          description:
+            "Generate types for all endpoints under this tag/group name",
+        },
+        language: {
+          type: "string",
+          description: '"typescript" (default) or "dart"',
+        },
+      },
+    },
+  },
+];
+
+export async function handleToolCall(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<string> {
+  switch (name) {
+    case "search_api":
+      return searchApi(
+        args.keyword as string,
+        (args.mode as string) || "auto",
+        args.tag as string | undefined,
+        (args.limit as number) || 10,
+      );
+    case "get_api_detail":
+      return getApiDetail(
+        args.path as string,
+        args.method as string | undefined,
+      );
+    case "list_api_tags":
+      return listTags();
+    case "list_tag_apis":
+      return listTagApis(args.tag as string);
+    case "open_api_doc":
+      return openApiDoc(
+        args.path as string,
+        args.method as string | undefined,
+      );
+    case "generate_types":
+      return generateTypes(
+        args.path as string | undefined,
+        args.method as string | undefined,
+        args.tag as string | undefined,
+        (args.language as string) || "typescript",
+      );
+    default:
+      return JSON.stringify({ error: `Unknown tool: ${name}` });
+  }
+}

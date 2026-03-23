@@ -2,6 +2,7 @@ import { searchApi } from "./search.js";
 import { getApiDetail } from "./detail.js";
 import { listTags, listTagApis } from "./tags.js";
 import { openApiDoc } from "./doc.js";
+import { callApi } from "./call.js";
 import { generateTypes } from "../generator/index.js";
 
 export const TOOLS = [
@@ -116,6 +117,44 @@ export const TOOLS = [
       },
     },
   },
+  {
+    name: "call_api",
+    description:
+      "Make a real HTTP request to any URL and return the live response. Auto-detects HTTP method from Swagger spec if the URL path matches a known endpoint. All headers, auth, and base URL must be provided by the caller (typically configured via a project-level Skill).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        url: {
+          type: "string",
+          description:
+            'Full request URL, e.g. "https://api.example.com/api/v1/users"',
+        },
+        method: {
+          type: "string",
+          description:
+            "HTTP method: GET, POST, PUT, DELETE, PATCH (auto-detected from Swagger spec if omitted)",
+        },
+        body: {
+          type: "object",
+          description: "JSON request body (for POST/PUT/PATCH)",
+        },
+        query: {
+          type: "object",
+          description: "URL query parameters as key-value pairs",
+        },
+        headers: {
+          type: "object",
+          description:
+            "HTTP headers to send (Content-Type defaults to application/json when body is present)",
+        },
+        timeout: {
+          type: "number",
+          description: "Request timeout in ms (default: 30000)",
+        },
+      },
+      required: ["url"],
+    },
+  },
 ];
 
 export async function handleToolCall(
@@ -151,6 +190,15 @@ export async function handleToolCall(
         args.tag as string | undefined,
         (args.language as string) || "typescript",
       );
+    case "call_api":
+      return callApi({
+        url: args.url as string,
+        method: args.method as string | undefined,
+        body: args.body as Record<string, unknown> | undefined,
+        query: args.query as Record<string, unknown> | undefined,
+        headers: args.headers as Record<string, string> | undefined,
+        timeout: args.timeout as number | undefined,
+      });
     default:
       return JSON.stringify({ error: `Unknown tool: ${name}` });
   }

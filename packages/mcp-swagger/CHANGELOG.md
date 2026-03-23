@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.5] - 2026-03-23
+
+### Added
+
+- `call_api` tool — make real HTTP requests to any URL with auto-detected HTTP method from Swagger spec
+
 ## [0.1.4] - 2026-03-19
 
 ### Changed

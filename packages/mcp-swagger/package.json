@@ -1,6 +1,6 @@
 {
   "name": "@codon/mcp-swagger",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "MCP Server for searching Swagger/OpenAPI documentation (Knife4j compatible)",
   "type": "module",
   "bin": {

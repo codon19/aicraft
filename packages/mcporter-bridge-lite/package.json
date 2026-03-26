@@ -1,0 +1,36 @@
+{
+  "name": "@codon/mcporter-bridge-lite",
+  "version": "0.1.0",
+  "description": "MCP stdio bridge that delegates to the mcporter CLI",
+  "type": "module",
+  "bin": {
+    "mcporter-bridge-lite": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "clean": "rm -rf dist"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "mcporter",
+    "bridge",
+    "ai-tools"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.4",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

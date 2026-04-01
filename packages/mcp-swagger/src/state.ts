@@ -8,7 +8,18 @@ export const state = {
   embeddingIndex: [] as number[][],
   embeddingReady: false,
   rawSpecs: [] as any[],
+  lastLoadedAt: 0,
+  loading: false,
 };
+
+export function resetState(): void {
+  state.endpoints = [];
+  state.tags = new Map();
+  state.loadError = "";
+  state.embeddingIndex = [];
+  state.embeddingReady = false;
+  state.rawSpecs = [];
+}
 
 export function buildDocUrl(ep: ApiEndpoint): string {
   const group = encodeURIComponent(ep.groupName || "default");

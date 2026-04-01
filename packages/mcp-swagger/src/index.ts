@@ -13,7 +13,7 @@
  */
 
 import * as readline from "node:readline";
-import { BASE_URL } from "./config.js";
+import { BASE_URL, REFRESH_INTERVAL_MIN } from "./config.js";
 import { handleMessage } from "./server.js";
 import { loadSpec } from "./parser.js";
 import { buildEmbeddingIndex } from "./embedding.js";
@@ -37,4 +37,16 @@ loadSpec()
   .then(() => buildEmbeddingIndex())
   .then(() => {
     process.stderr.write(`mcp-swagger ready (${BASE_URL})\n`);
+
+    if (REFRESH_INTERVAL_MIN > 0) {
+      const ms = REFRESH_INTERVAL_MIN * 60_000;
+      setInterval(async () => {
+        process.stderr.write("Auto-refreshing spec…\n");
+        const result = await loadSpec();
+        if (result.ok) await buildEmbeddingIndex();
+      }, ms);
+      process.stderr.write(
+        `Auto-refresh enabled: every ${REFRESH_INTERVAL_MIN} min\n`,
+      );
+    }
   });

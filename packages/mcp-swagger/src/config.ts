@@ -11,3 +11,13 @@ export const EMBEDDING_BASE_URL =
   process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
 export const EMBEDDING_MODEL =
   process.env.EMBEDDING_MODEL || "text-embedding-3-small";
+
+/** Auto-refresh interval in minutes. 0 = disabled (default). */
+export const REFRESH_INTERVAL_MIN = Number(
+  process.env.SWAGGER_REFRESH_INTERVAL || "0",
+);
+
+/** Max retry attempts when loading spec fails at startup. */
+export const LOAD_RETRY_COUNT = Number(
+  process.env.SWAGGER_LOAD_RETRIES || "3",
+);

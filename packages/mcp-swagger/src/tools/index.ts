@@ -3,6 +3,7 @@ import { getApiDetail } from "./detail.js";
 import { listTags, listTagApis } from "./tags.js";
 import { openApiDoc } from "./doc.js";
 import { callApi } from "./call.js";
+import { reloadSpec } from "./reload.js";
 import { generateTypes } from "../generator/index.js";
 
 export const TOOLS = [
@@ -118,6 +119,12 @@ export const TOOLS = [
     },
   },
   {
+    name: "reload_spec",
+    description:
+      "Reload the OpenAPI/Swagger spec from the backend. Use when endpoints are missing or stale, or after the backend deploys new APIs.",
+    inputSchema: { type: "object" as const, properties: {} },
+  },
+  {
     name: "call_api",
     description:
       "Make a real HTTP request to any URL and return the live response. Auto-detects HTTP method from Swagger spec if the URL path matches a known endpoint. All headers, auth, and base URL must be provided by the caller (typically configured via a project-level Skill).",
@@ -190,6 +197,8 @@ export async function handleToolCall(
         args.tag as string | undefined,
         (args.language as string) || "typescript",
       );
+    case "reload_spec":
+      return reloadSpec();
     case "call_api":
       return callApi({
         url: args.url as string,

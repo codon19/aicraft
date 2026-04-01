@@ -14,6 +14,7 @@ Compatible with **Knife4j**, **Swagger 2.0**, and **OpenAPI 3.0**.
 | `list_tag_apis` | List all endpoints under a specific tag |
 | `open_api_doc` | Open the Knife4j doc page in the browser |
 | `generate_types` | Generate TypeScript interfaces or Dart classes from API schemas |
+| `reload_spec` | Hot-reload the OpenAPI spec without restarting the MCP server |
 
 ### Type Generation
 
@@ -34,6 +35,8 @@ Specify a single endpoint (`path` + `method`) or batch-generate for an entire ta
 | `OPENAI_API_KEY` | No | Enables semantic (embedding) search |
 | `OPENAI_BASE_URL` | No | Custom embedding API base (default: `https://api.openai.com/v1`) |
 | `EMBEDDING_MODEL` | No | Embedding model name (default: `text-embedding-3-small`) |
+| `SWAGGER_REFRESH_INTERVAL` | No | Auto-refresh interval in minutes (default: `0` = disabled) |
+| `SWAGGER_LOAD_RETRIES` | No | Max retry attempts on startup (default: `3`) |
 
 ### Cursor MCP Config
 

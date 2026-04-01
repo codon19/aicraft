@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.6] - 2026-04-01
+
+### Added
+
+- `reload_spec` tool — hot-reload OpenAPI spec without restarting the MCP server
+- Startup retry with exponential backoff (default 3 attempts) when spec loading fails
+- `SWAGGER_REFRESH_INTERVAL` env var — auto-refresh spec on a timer (in minutes)
+- `SWAGGER_LOAD_RETRIES` env var — configure max startup retry attempts
+
+### Changed
+
+- Reload is safe: on failure, previous endpoint data is preserved instead of being wiped
+- Better error logging: failed spec fetches now report the URL and specific error reason
+
 ## [0.1.5] - 2026-03-23
 
 ### Added

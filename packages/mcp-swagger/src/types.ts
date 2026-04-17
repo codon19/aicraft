@@ -25,6 +25,14 @@ export interface SwaggerResource {
   location: string;
 }
 
+export interface ResourceFingerprint {
+  url: string;
+  groupName: string;
+  etag?: string;
+  lastModified?: string;
+  contentHash?: string;
+}
+
 export type JsonRpcMessage = {
   jsonrpc: "2.0";
   id?: number;

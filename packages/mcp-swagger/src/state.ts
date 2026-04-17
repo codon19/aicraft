@@ -1,4 +1,4 @@
-import type { ApiEndpoint } from "./types.js";
+import type { ApiEndpoint, ResourceFingerprint } from "./types.js";
 import { BASE_URL } from "./config.js";
 
 export const state = {
@@ -10,6 +10,8 @@ export const state = {
   rawSpecs: [] as any[],
   lastLoadedAt: 0,
   loading: false,
+  resourceFingerprints: [] as ResourceFingerprint[],
+  lastFreshnessCheckAt: 0,
 };
 
 export function resetState(): void {
@@ -19,6 +21,7 @@ export function resetState(): void {
   state.embeddingIndex = [];
   state.embeddingReady = false;
   state.rawSpecs = [];
+  state.resourceFingerprints = [];
 }
 
 export function buildDocUrl(ep: ApiEndpoint): string {

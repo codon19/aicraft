@@ -14,7 +14,20 @@ Compatible with **Knife4j**, **Swagger 2.0**, and **OpenAPI 3.0**.
 | `list_tag_apis` | List all endpoints under a specific tag |
 | `open_api_doc` | Open the Knife4j doc page in the browser |
 | `generate_types` | Generate TypeScript interfaces or Dart classes from API schemas |
-| `reload_spec` | Hot-reload the OpenAPI spec without restarting the MCP server |
+| `check_updates` | Detect backend spec changes via conditional GET (ETag / Last-Modified / sha256) and auto-reload with a diff of added/removed endpoints |
+| `reload_spec` | Force a full reload of the OpenAPI spec |
+
+### Automatic freshness checks
+
+Every tool call (except `reload_spec`, `check_updates`, `call_api`) transparently issues an HTTP conditional GET against each cached spec URL:
+
+- **304 Not Modified** → cache hit, ~5ms overhead on an internal LAN, tool proceeds immediately
+- **200 OK with same sha256** → still unchanged, tool proceeds
+- **200 OK with new content** → spec is auto-reloaded, embedding index rebuilt, tool then runs against fresh data
+
+This means the agent is always querying the latest backend spec without you ever having to call `reload_spec`. Network errors are swallowed — the cached spec is used so transient upstream issues never break tool calls.
+
+For remote/slow backends you can throttle these checks with `SWAGGER_FRESHNESS_THROTTLE_MS` (see below).
 
 ### Type Generation
 
@@ -35,8 +48,9 @@ Specify a single endpoint (`path` + `method`) or batch-generate for an entire ta
 | `OPENAI_API_KEY` | No | Enables semantic (embedding) search |
 | `OPENAI_BASE_URL` | No | Custom embedding API base (default: `https://api.openai.com/v1`) |
 | `EMBEDDING_MODEL` | No | Embedding model name (default: `text-embedding-3-small`) |
-| `SWAGGER_REFRESH_INTERVAL` | No | Auto-refresh interval in minutes (default: `0` = disabled) |
+| `SWAGGER_REFRESH_INTERVAL` | No | Background auto-refresh interval in minutes (default: `0` = disabled). Complementary to the per-call freshness check |
 | `SWAGGER_LOAD_RETRIES` | No | Max retry attempts on startup (default: `3`) |
+| `SWAGGER_FRESHNESS_THROTTLE_MS` | No | Minimum interval between per-call freshness checks (default: `0` = check on every tool call). Set to a positive value (e.g. `30000`) for remote backends where ETag round-trips are expensive |
 
 ### Cursor MCP Config
 

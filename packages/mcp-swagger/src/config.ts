@@ -21,3 +21,12 @@ export const REFRESH_INTERVAL_MIN = Number(
 export const LOAD_RETRY_COUNT = Number(
   process.env.SWAGGER_LOAD_RETRIES || "3",
 );
+
+/**
+ * Throttle freshness checks between tool calls (ms).
+ * 0 = check on every tool call (default, recommended for internal networks).
+ * Set to a positive value (e.g. 30000) for remote/slow backends.
+ */
+export const FRESHNESS_THROTTLE_MS = Number(
+  process.env.SWAGGER_FRESHNESS_THROTTLE_MS || "0",
+);

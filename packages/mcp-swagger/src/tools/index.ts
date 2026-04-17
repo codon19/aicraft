@@ -4,7 +4,17 @@ import { listTags, listTagApis } from "./tags.js";
 import { openApiDoc } from "./doc.js";
 import { callApi } from "./call.js";
 import { reloadSpec } from "./reload.js";
+import { checkUpdates } from "./check_updates.js";
 import { generateTypes } from "../generator/index.js";
+import { ensureFresh } from "../freshness.js";
+
+/**
+ * Tools that do NOT need a pre-flight freshness check:
+ *  - reload_spec: already forces a full reload
+ *  - check_updates: internally calls ensureFresh()
+ *  - call_api: unrelated to the spec cache
+ */
+const SKIP_FRESHNESS = new Set(["reload_spec", "check_updates", "call_api"]);
 
 export const TOOLS = [
   {
@@ -121,7 +131,13 @@ export const TOOLS = [
   {
     name: "reload_spec",
     description:
-      "Reload the OpenAPI/Swagger spec from the backend. Use when endpoints are missing or stale, or after the backend deploys new APIs.",
+      "Force a full reload of the OpenAPI/Swagger spec from the backend. Prefer `check_updates` for routine freshness — it uses conditional GETs and only reloads when something changed.",
+    inputSchema: { type: "object" as const, properties: {} },
+  },
+  {
+    name: "check_updates",
+    description:
+      "Check whether the backend API spec has changed since last load, using HTTP conditional GET (ETag / Last-Modified / sha256 fallback). Cheap — 304 responses are ~5ms. If changes are detected, the spec is auto-reloaded and a diff of added/removed endpoint paths is returned.",
     inputSchema: { type: "object" as const, properties: {} },
   },
   {
@@ -168,6 +184,10 @@ export async function handleToolCall(
   name: string,
   args: Record<string, unknown>,
 ): Promise<string> {
+  if (!SKIP_FRESHNESS.has(name)) {
+    await ensureFresh();
+  }
+
   switch (name) {
     case "search_api":
       return searchApi(
@@ -199,6 +219,8 @@ export async function handleToolCall(
       );
     case "reload_spec":
       return reloadSpec();
+    case "check_updates":
+      return checkUpdates();
     case "call_api":
       return callApi({
         url: args.url as string,

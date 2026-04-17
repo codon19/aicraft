@@ -1,10 +1,10 @@
 {
   "name": "@codon/mcp-swagger",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "MCP Server for searching Swagger/OpenAPI documentation (Knife4j compatible)",
   "type": "module",
   "bin": {
-    "mcp-swagger": "./dist/index.js"
+    "mcp-swagger": "dist/index.js"
   },
   "files": [
     "dist"
@@ -24,7 +24,19 @@
     "knife4j",
     "ai-tools"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codon19/aicraft.git",
+    "directory": "packages/mcp-swagger"
+  },
+  "homepage": "https://github.com/codon19/aicraft/tree/main/packages/mcp-swagger#readme",
+  "bugs": {
+    "url": "https://github.com/codon19/aicraft/issues"
+  },
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "tsx": "^4.19.0",

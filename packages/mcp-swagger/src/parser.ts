@@ -1,6 +1,11 @@
+import { createHash } from "node:crypto";
 import type { ApiEndpoint, ParameterInfo, SwaggerResource } from "./types.js";
 import { BASE_URL, LOAD_RETRY_COUNT } from "./config.js";
 import { state, resetState } from "./state.js";
+
+export function sha256(input: string): string {
+  return createHash("sha256").update(input).digest("hex");
+}
 
 export function resolveRef(ref: string, spec: any): any {
   const parts = ref.replace(/^#\//, "").split("/");
@@ -155,8 +160,16 @@ async function loadSpecOnce(): Promise<void> {
         errors.push(`${fullUrl} → HTTP ${res.status}`);
         continue;
       }
-      const spec = await res.json();
+      const bodyText = await res.text();
+      const spec = JSON.parse(bodyText);
       state.rawSpecs.push(spec);
+      state.resourceFingerprints.push({
+        url: fullUrl,
+        groupName: entry.groupName,
+        etag: res.headers.get("etag") ?? undefined,
+        lastModified: res.headers.get("last-modified") ?? undefined,
+        contentHash: sha256(bodyText),
+      });
       const parsed = parseEndpoints(spec, entry.groupName);
       state.endpoints.push(...parsed);
     } catch (e: any) {

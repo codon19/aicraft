@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.7] - 2026-04-17
+
+### Added
+
+- **Automatic freshness checks** — every tool call now issues an HTTP conditional GET (`If-None-Match` / `If-Modified-Since`) against each cached spec URL before dispatching. A 304 response (typically ~5ms on internal networks) lets the call proceed with the cached spec; a changed body triggers an automatic reload. Backend deploys are picked up instantly without manual `reload_spec` calls.
+- `check_updates` tool — explicitly checks for spec changes and returns a diff of added/removed endpoint paths. Useful for answering "what APIs changed recently?".
+- `SWAGGER_FRESHNESS_THROTTLE_MS` env var — throttles per-call freshness checks for remote/slow backends (default: `0` = check on every call).
+- sha256 fallback fingerprinting — spec changes are still detected even when the backend doesn't emit `ETag` or `Last-Modified` headers.
+
+### Changed
+
+- `reload_spec` description clarified — prefer `check_updates` for routine freshness; `reload_spec` now explicitly documents itself as a force-reload.
+
 ## [0.1.6] - 2026-04-01
 
 ### Added
